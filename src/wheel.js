@@ -9,7 +9,8 @@ export class Wheel {
     this.onChange = onChange;
     this.onSubmit = onSubmit;
     this.letters = [];
-    this.path = []; // indices of selected letters, in order
+    this.centers = [];   // <- added this
+    this.path = [];
     this.dragging = false;
 
     el.addEventListener('pointerdown', (e) => this.#start(e));
