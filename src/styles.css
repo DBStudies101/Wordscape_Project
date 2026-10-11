@@ -1,0 +1,20 @@
+:root{--bg:#18213a;--panel:#232f52;--tile:#e9eefb;--ink:#18213a;--accent:#f2b84b;--muted:#8f9bbd}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--tile);font-family:"Trebuchet MS",system-ui,sans-serif;display:flex;justify-content:center}
+main{width:min(100%,420px);padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px}
+header{display:flex;justify-content:space-between;align-items:baseline;width:100%}
+h1{font-size:1.1rem;margin:0}
+.board{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:4px;width:min(100%,300px)}
+.cell,.empty{aspect-ratio:1}
+.cell{background:var(--panel);border-radius:6px;display:grid;place-items:center;font-size:1.3rem;font-weight:700;color:transparent}
+.cell.open{background:var(--tile);color:var(--ink)}
+.preview{min-height:2.2rem;font-size:1.6rem;font-weight:700;letter-spacing:.15em;color:var(--accent)}
+.wheel{position:relative;width:280px;height:280px;border-radius:50%;background:var(--panel);touch-action:none;user-select:none;cursor:pointer}
+.wheel svg{position:absolute;inset:0;pointer-events:none}
+.wheel polyline{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;stroke-linejoin:round;opacity:.7}
+.letter{position:absolute;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-size:1.5rem;font-weight:700;pointer-events:none;transition:background .1s}
+.letter.on{background:var(--accent);color:var(--ink)}
+.status{min-height:1.4rem;color:var(--muted)}
+.controls{display:flex;gap:10px}
+.ctrl{font:inherit;padding:8px 16px;border-radius:999px;border:2px solid var(--muted);background:none;color:var(--tile);cursor:pointer}
+.ctrl:hover,.ctrl:focus-visible{border-color:var(--accent);outline:none}

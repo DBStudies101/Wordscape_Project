@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wordscape</title>
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1 id="level">Level 1</h1>
+      <span id="bonus">Bonus 0</span>
+    </header>
+    <div id="board" class="board" aria-label="Crossword grid"></div>
+    <div id="preview" class="preview" aria-live="polite"></div>
+    <div id="wheel" class="wheel" aria-label="Letter wheel"></div>
+    <div id="status" class="status" aria-live="polite"></div>
+    <div class="controls">
+      <button id="shuffle" class="ctrl">Shuffle</button>
+      <button id="next" class="ctrl" hidden>Next level</button>
+    </div>
+  </main>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
