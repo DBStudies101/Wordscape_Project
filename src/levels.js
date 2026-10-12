@@ -1,24 +1,14 @@
-// MVP: hand-built layouts. v2 replaces this with generator.js.
-// Each word: { word, row, col, dir: 'across' | 'down' }
+// Built-in levels, used only if the database can't be reached.
+// Same shape as the database levels: ids match the first two rows seeded in Supabase.
 export const LEVELS = [
   {
+    id: 1,
     letters: ['H', 'E', 'A', 'R', 'T'],
-    words: [
-      { word: 'HEART', row: 2, col: 0, dir: 'across' },
-      { word: 'HAT', row: 2, col: 0, dir: 'down' },
-      { word: 'EAT', row: 1, col: 2, dir: 'down' },
-      { word: 'TEA', row: 2, col: 4, dir: 'down' },
-    ],
-    bonus: ['EARTH', 'HATER', 'HEAR', 'HATE', 'HEAT', 'TEAR', 'RATE', 'ART', 'RAT', 'EAR', 'ARE', 'ATE', 'TAR', 'ERA'],
+    pool: ['HEART', 'EARTH', 'HATER', 'HEAR', 'HATE', 'HEAT', 'TEAR', 'RATE', 'HAT', 'EAT', 'TEA', 'ART', 'RAT', 'EAR', 'ARE', 'ATE', 'TAR', 'ERA'],
   },
   {
+    id: 2,
     letters: ['C', 'L', 'O', 'U', 'D'],
-    words: [
-      { word: 'COULD', row: 2, col: 0, dir: 'across' },
-      { word: 'LOUD', row: 0, col: 2, dir: 'down' },
-      { word: 'OLD', row: 0, col: 4, dir: 'down' },
-      { word: 'COD', row: 2, col: 0, dir: 'down' },
-    ],
-    bonus: ['CLOUD', 'CLOD', 'COLD', 'DUO'],
+    pool: ['CLOUD', 'COULD', 'LOUD', 'OLD', 'COD', 'CLOD', 'COLD', 'DUO'],
   },
 ];

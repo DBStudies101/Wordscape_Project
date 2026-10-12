@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canBuild, generate, isValid } from '../src/generator.js';
+import { canBuild, generate, isValid, mulberry32 } from '../src/generator.js';
 
 const LETTERS = ['H', 'E', 'A', 'R', 'T'];
 const POOL = ['HEART', 'EARTH', 'HATER', 'HEAR', 'HATE', 'HEAT', 'TEAR', 'RATE', 'HAT', 'EAT', 'TEA', 'ART', 'RAT', 'EAR', 'ARE', 'ATE', 'TAR', 'ERA'];
@@ -97,3 +97,34 @@ describe('generate', () => {
     }
   });
 });
+
+describe('seeded generation', () => {
+  it('mulberry32 gives the same sequence for the same seed', () => {
+    const a = mulberry32(99);
+    const b = mulberry32(99);
+    expect([a(), a(), a()]).toEqual([b(), b(), b()]);
+  });
+
+  it('the same seed always produces the same layout', () => {
+    const first = generate(POOL, { seed: 2026 });
+    for (let i = 0; i < 5; i++) {
+      expect(generate(POOL, { seed: 2026 })).toEqual(first);
+    }
+  });
+
+  it('the result does not depend on the order words arrive in', () => {
+    const reversed = [...POOL].reverse();
+    expect(generate(reversed, { seed: 7 })).toEqual(generate(POOL, { seed: 7 }));
+  });
+
+  it('different seeds give a variety of layouts, all valid', () => {
+    const seen = new Set();
+    for (let seed = 1; seed <= 20; seed++) {
+      const layout = generate(POOL, { seed, attempts: 20 });
+      expect(isValid(layout)).toBe(true);
+      seen.add(JSON.stringify(layout));
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
+});
+

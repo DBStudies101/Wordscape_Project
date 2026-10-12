@@ -9,10 +9,13 @@ export class Wheel {
     this.onChange = onChange;
     this.onSubmit = onSubmit;
     this.letters = [];
-    this.centers = [];   // <- added this
-    this.path = [];
+    this.centers = []; // safe default: clicks before letters arrive are ignored
+    this.path = []; // indices of selected letters, in order
     this.dragging = false;
 
+    // Stop long-press menus and text selection (mobile highlight bug)
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    el.addEventListener('selectstart', (e) => e.preventDefault());
     el.addEventListener('pointerdown', (e) => this.#start(e));
     el.addEventListener('pointermove', (e) => this.#move(e));
     el.addEventListener('pointerup', () => this.#end());

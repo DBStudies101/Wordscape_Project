@@ -1,10 +1,24 @@
 // Crossword layout generator: greedy placement + random restarts.
 
 const key = (r, c) => `${r},${c}`;
-const shuffle = (arr) => {
+
+// Small seeded random number generator: the same seed always gives the same sequence.
+// This is what lets a refresh rebuild the exact same puzzle.
+export function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const shuffle = (arr, rng) => {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -93,13 +107,16 @@ function normalize(placed) {
 // More words is better; among equals, a smaller bounding box wins
 const score = (l) => l.words.length * 100 - l.rows * l.cols;
 
-export function generate(words, { attempts = 300, maxWords = 6 } = {}) {
-  const usable = [...new Set(words.filter((w) => w.length >= 3))];
+// Pass a `seed` to get the same layout every time; omit it for a random one.
+export function generate(words, { attempts = 300, maxWords = 6, seed } = {}) {
+  // Sorting first makes the result independent of the order the words arrive in
+  const usable = [...new Set(words.filter((w) => w.length >= 3))].sort();
   if (usable.length === 0) return null;
+  const rng = seed === undefined ? Math.random : mulberry32(seed);
 
   let best = null;
   for (let a = 0; a < attempts; a++) {
-    const pool = shuffle(usable).sort((x, y) => y.length - x.length); // longest first, ties random
+    const pool = shuffle(usable, rng).sort((x, y) => y.length - x.length); // longest first, ties random
     const grid = new Map();
     const placed = [];
     put(grid, placed, { word: pool[0], row: 0, col: 0, dir: 'across' });
@@ -107,7 +124,7 @@ export function generate(words, { attempts = 300, maxWords = 6 } = {}) {
     for (const w of pool.slice(1)) {
       if (placed.length >= maxWords) break;
       const options = candidates(grid, w);
-      if (options.length) put(grid, placed, options[Math.floor(Math.random() * options.length)]);
+      if (options.length) put(grid, placed, options[Math.floor(rng() * options.length)]);
     }
 
     const layout = normalize(placed);

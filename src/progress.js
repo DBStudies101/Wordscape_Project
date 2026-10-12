@@ -13,17 +13,22 @@ export async function loadProgress() {
   await ensureSession();
   const { data, error } = await supabase
     .from('player_progress')
-    .select('current_level')
-    .maybeSingle(); // returns null instead of an error for a new player
+    .select('current_level, level_id, seed, found_words, bonus_words')
+    .maybeSingle(); // null for a brand-new player instead of an error
   if (error) throw error;
   return data;
 }
 
-export async function saveProgress(currentLevel) {
+// `state` is Game.state: { levelId, seed, found, bonus, number }
+export async function saveProgress(state) {
   const session = await ensureSession();
   const { error } = await supabase.from('player_progress').upsert({
     user_id: session.user.id,
-    current_level: currentLevel,
+    current_level: state.number,
+    level_id: state.levelId,
+    seed: state.seed,
+    found_words: state.found,
+    bonus_words: state.bonus,
     updated_at: new Date().toISOString(),
   });
   if (error) throw error;
