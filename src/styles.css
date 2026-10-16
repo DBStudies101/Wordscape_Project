@@ -1,20 +1,334 @@
-:root{--bg:#18213a;--panel:#232f52;--tile:#e9eefb;--ink:#18213a;--accent:#f2b84b;--muted:#8f9bbd}
-*{box-sizing:border-box}
-body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;margin:0;min-height:100vh;background:var(--bg);color:var(--tile);font-family:"Trebuchet MS",system-ui,sans-serif;display:flex;justify-content:center}
-main{width:min(100%,420px);padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px}
-header{display:flex;justify-content:space-between;align-items:baseline;width:100%}
-h1{font-size:1.1rem;margin:0}
-.board{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:4px;width:min(100%,300px)}
-.cell,.empty{aspect-ratio:1}
-.cell{background:var(--panel);border-radius:6px;display:grid;place-items:center;font-size:1.3rem;font-weight:700;color:transparent}
-.cell.open{background:var(--tile);color:var(--ink)}
-.preview{min-height:2.2rem;font-size:1.6rem;font-weight:700;letter-spacing:.15em;color:var(--accent)}
-.wheel{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;outline:none;position:relative;width:280px;height:280px;border-radius:50%;background:var(--panel);touch-action:none;user-select:none;cursor:pointer}
-.wheel svg{position:absolute;inset:0;pointer-events:none}
-.wheel polyline{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;stroke-linejoin:round;opacity:.7}
-.letter{position:absolute;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-size:1.5rem;font-weight:700;pointer-events:none;transition:background .1s}
-.letter.on{background:var(--accent);color:var(--ink)}
-.status{min-height:1.4rem;color:var(--muted)}
-.controls{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-.ctrl{font:inherit;padding:8px 16px;border-radius:999px;border:2px solid var(--muted);background:none;color:var(--tile);cursor:pointer}
-.ctrl:hover,.ctrl:focus-visible{border-color:var(--accent);outline:none}
+/* Wordscape: a lamplit evening. Found tiles glow like windows against a dusk-teal room. */
+
+:root {
+  --dusk: #1f3436;      /* page */
+  --tray: #274240;      /* panels */
+  --well: #182a2b;      /* unfound tiles */
+  --lamp: #f4c873;      /* found tiles, selection */
+  --lamp-edge: #c99a45; /* underside of a lit tile */
+  --ink: #2a2118;       /* text on lit tiles */
+  --linen: #ece5d3;     /* main text */
+  --fog: #a7beb6;       /* quiet text */
+  --rose: #e8a090;      /* rejected words */
+
+  --serif: "Young Serif", Georgia, serif;
+  --sans: "Nunito Variable", Nunito, system-ui, sans-serif;
+
+  --gap: 5px;
+  --board-w: min(92vw, 520px);
+  --board-h: min(42vh, 430px);
+  --wheel: clamp(230px, min(82vw, 36vh), 350px);
+}
+
+@supports (height: 1dvh) {
+  :root {
+    --board-h: min(42dvh, 430px);
+    --wheel: clamp(230px, min(82vw, 36dvh), 350px);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--dusk);
+  color: var(--linen);
+  font-family: var(--sans);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 3px; }
+
+/* ---------- layout ---------- */
+
+.game {
+  min-height: 100vh;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: max(14px, env(safe-area-inset-top)) 18px max(12px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 10px;
+}
+
+@supports (height: 1dvh) {
+  body, .game { min-height: 100dvh; }
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.mark {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.stats { display: flex; align-items: center; gap: 16px; font-weight: 700; font-size: 0.95rem; }
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-right: -8px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--fog);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.icon svg { width: 20px; height: 20px; }
+.icon:hover { background: rgba(255, 255, 255, 0.07); color: var(--linen); }
+.icon[aria-pressed="true"] .waves, .icon[aria-pressed="false"] .cross { display: none; }
+
+/* The bonus counter bumps when a bonus word lands, in time with its chime */
+.pop { animation: pop 0.4s ease-out; }
+
+@keyframes pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.25); color: var(--lamp); }
+  100% { transform: scale(1); }
+}
+#bonus { color: var(--fog); }
+
+.stage { display: grid; place-items: center; }
+.play { display: grid; justify-items: center; gap: 8px; }
+
+/* ---------- the crossword ---------- */
+
+.board {
+  --pad: 14px;
+  --cell: min(
+    58px,
+    calc((var(--board-w) - 2 * var(--pad) - (var(--cols) - 1) * var(--gap)) / var(--cols)),
+    calc((var(--board-h) - 2 * var(--pad) - (var(--rows) - 1) * var(--gap)) / var(--rows))
+  );
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--cell));
+  gap: var(--gap);
+  padding: var(--pad);
+  background: var(--tray);
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.board:empty { display: none; }
+
+.cell, .empty { width: var(--cell); height: var(--cell); }
+
+.cell {
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--cell) * 0.22);
+  background: var(--well);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4);
+  font-family: var(--serif);
+  font-size: calc(var(--cell) * 0.58);
+  line-height: 1;
+  color: var(--ink);
+}
+
+.cell.open {
+  background: var(--lamp);
+  box-shadow: 0 3px 0 var(--lamp-edge), 0 0 20px rgba(244, 200, 115, 0.16);
+}
+
+/* A tile warms up when its word is found */
+.cell.lit { animation: light 0.7s ease-out backwards; } /* backwards: stay dark until this tile's turn */
+
+@keyframes light {
+  0%   { transform: scale(0.72); background: var(--well); color: transparent; box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4); }
+  55%  { transform: scale(1.1);  box-shadow: 0 3px 0 var(--lamp-edge), 0 0 30px rgba(244, 200, 115, 0.75); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- the wheel ---------- */
+
+.dial { position: relative; width: var(--wheel); aspect-ratio: 1; }
+
+.wheel {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--tray);
+  box-shadow: inset 0 3px 14px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  touch-action: none;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  outline: none;
+}
+
+.wheel svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.wheel polyline {
+  fill: none;
+  stroke: var(--lamp);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.55;
+}
+
+.letter {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--serif);
+  font-size: calc(var(--wheel) * 0.13);
+  line-height: 1;
+  color: var(--linen);
+  pointer-events: none;
+  transition: background 0.12s, color 0.12s, transform 0.12s;
+}
+
+.letter.on { background: var(--lamp); color: var(--ink); transform: scale(1.06); }
+
+/* Centre of the wheel: shuffle when idle, the word you are spelling while dragging */
+.core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+}
+
+.shuffle {
+  width: 30%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--fog);
+  cursor: pointer;
+  transition: color 0.15s, opacity 0.12s;
+}
+
+.shuffle svg { width: 52%; height: 52%; }
+.shuffle:hover { color: var(--lamp); }
+
+.word {
+  /* a small dusk-coloured pill, so the word stays readable over the drag lines */
+  max-width: 54%;
+  padding: 0.22em 0.6em 0.26em;
+  border-radius: 999px;
+  background: var(--dusk);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  font-family: var(--serif);
+  font-size: calc(var(--wheel) * 0.076);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  color: var(--lamp);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.dial.typing .word { opacity: 1; }
+.dial.typing .shuffle { opacity: 0; pointer-events: none; }
+.word[data-state="bad"] { color: var(--rose); animation: shake 0.4s; }
+
+@keyframes shake {
+  0%, 100% { transform: translate(-50%, -50%); }
+  25% { transform: translate(calc(-50% - 6px), -50%); }
+  75% { transform: translate(calc(-50% + 6px), -50%); }
+}
+
+/* ---------- messages and buttons ---------- */
+
+.status {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fog);
+  text-align: center;
+}
+
+.actions { display: flex; gap: 12px; align-items: center; justify-content: center; min-height: 48px; }
+
+.quiet {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--fog);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.quiet:hover { background: rgba(255, 255, 255, 0.07); color: var(--linen); }
+
+.primary {
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--lamp);
+  box-shadow: 0 3px 0 var(--lamp-edge);
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink);
+  cursor: pointer;
+  animation: rise 0.35s ease-out;
+}
+
+.primary:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--lamp-edge); }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.foot { text-align: center; font-size: 0.8rem; color: var(--fog); opacity: 0.8; }
+.foot a { color: inherit; text-underline-offset: 3px; }
+
+/* ---------- desktop: crossword on the left, wheel on the right ---------- */
+
+@media (min-width: 900px) and (min-height: 600px) {
+  :root {
+    --board-w: min(54vw, 600px);
+    --board-h: min(66vh, 620px);
+    --wheel: clamp(260px, min(34vw, 52vh), 400px);
+  }
+
+  .game {
+    max-width: 1120px;
+    padding-inline: 32px;
+    grid-template-columns: 1.15fr 1fr;
+    grid-template-rows: auto 1fr auto;
+    column-gap: 56px;
+  }
+
+  .top, .foot { grid-column: 1 / -1; }
+  .stage { grid-column: 1; grid-row: 2; }
+  .play { grid-column: 2; grid-row: 2; align-content: center; gap: 14px; }
+  .mark { font-size: 1.7rem; }
+  .stats { font-size: 1.05rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}

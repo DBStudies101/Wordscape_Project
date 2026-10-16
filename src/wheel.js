@@ -4,10 +4,11 @@ const TILE = 52;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export class Wheel {
-  constructor(el, { onChange, onSubmit }) {
+  constructor(el, { onChange, onSubmit, onPick = () => {} }) {
     this.el = el;
     this.onChange = onChange;
     this.onSubmit = onSubmit;
+    this.onPick = onPick; // called with the new word length each time a letter is added or removed
     this.letters = [];
     this.centers = []; // safe default: clicks before letters arrive are ignored
     this.path = []; // indices of selected letters, in order
@@ -51,8 +52,10 @@ export class Wheel {
       const d = document.createElement('div');
       d.className = 'letter';
       d.textContent = letter;
-      d.style.left = `${this.centers[i].x - TILE / 2}px`;
-      d.style.top = `${this.centers[i].y - TILE / 2}px`;
+      // Percentages (not pixels) so the whole wheel scales with its CSS size
+      d.style.left = `${((this.centers[i].x - TILE / 2) / SIZE) * 100}%`;
+      d.style.top = `${((this.centers[i].y - TILE / 2) / SIZE) * 100}%`;
+      d.style.width = d.style.height = `${(TILE / SIZE) * 100}%`;
       return d;
     });
 
@@ -76,6 +79,7 @@ export class Wheel {
     this.dragging = true;
     this.el.setPointerCapture(e.pointerId);
     this.path = [idx];
+    this.onPick(1);
     this.#render(this.#pointerPos(e));
   }
 
@@ -88,6 +92,7 @@ export class Wheel {
       if (idx === this.path[last - 1]) this.path.pop(); // dragged back: undo last letter
       else if (!this.path.includes(idx)) this.path.push(idx);
     }
+    if (this.path.length !== last + 1) this.onPick(this.path.length);
     this.#render(pos);
   }
 
